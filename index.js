@@ -24,7 +24,10 @@ app.use((req, res, next) => {
 app.use(express.json());
 app.use(
   cors({
-    origin: "http://localhost:3000",
+    origin: "*",
+    methods: "GET,POST,PUT,DELETE,OPTIONS,PATCH",
+    allowedHeaders:
+      "Origin, X-Requested-With, Content-Type, Accept, Authorization",
   })
 );
 app.use(cookieParser());
