@@ -24,7 +24,7 @@ app.use((req, res, next) => {
 app.use(express.json());
 app.use(
   cors({
-    origin: "*",
+    origin: "https://social-my-sql-client.vercel.app",
     methods: "GET,POST,PUT,DELETE,OPTIONS,PATCH",
     allowedHeaders:
       "Origin, X-Requested-With, Content-Type, Accept, Authorization",
