@@ -28,6 +28,7 @@ app.use(
     methods: "GET,POST,PUT,DELETE,OPTIONS,PATCH",
     allowedHeaders:
       "Origin, X-Requested-With, Content-Type, Accept, Authorization",
+    credentials: true,
   })
 );
 app.use(cookieParser());
