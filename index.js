@@ -28,8 +28,10 @@ app.use(
     methods: "GET,POST,PUT,DELETE,OPTIONS,PATCH",
     allowedHeaders:
       "Origin, X-Requested-With, Content-Type, Accept, Authorization",
+    credentials: true, // This line is crucial to allow cookies to be sent
   })
 );
+
 app.use(cookieParser());
 
 cloudinary.config({
