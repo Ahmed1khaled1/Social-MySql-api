@@ -1,48 +1,79 @@
-import { db } from "../connect.js";
+import User from "../models/User.js";
 import jwt from "jsonwebtoken";
 
-export const getRelationships = (req,res)=>{
-    const q = "SELECT followerUserId FROM relationships WHERE followedUserId = ?";
-
-    db.query(q, [req.query.followedUserId], (err, data) => {
-      if (err) return res.status(500).json(err);
-      return res.status(200).json(data.map(relationship=>relationship.followerUserId));
-    });
-}
-
-export const addRelationship = (req, res) => {
-  const token = req.cookies.accessToken;
-  if (!token) return res.status(401).json("Not logged in!");
-
-  jwt.verify(token, "secretkey", (err, userInfo) => {
-    if (err) return res.status(403).json("Token is not valid!");
-
-    const q = "INSERT INTO relationships (`followerUserId`,`followedUserId`) VALUES (?)";
-    const values = [
-      userInfo.id,
-      req.body.userId
-    ];
-
-    db.query(q, [values], (err, data) => {
-      if (err) return res.status(500).json(err);
-      return res.status(200).json("Following");
-    });
-  });
+export const getRelationships = async (req, res) => {
+  try {
+    const user = await User.findById(req.query.followedUserId).select('followers');
+    if (!user) return res.status(404).json("User not found!");
+    
+    return res.status(200).json(user.followers);
+  } catch (err) {
+    return res.status(500).json(err);
+  }
 };
 
-export const deleteRelationship = (req, res) => {
-
+export const addRelationship = async (req, res) => {
   const token = req.cookies.accessToken;
   if (!token) return res.status(401).json("Not logged in!");
 
-  jwt.verify(token, "secretkey", (err, userInfo) => {
-    if (err) return res.status(403).json("Token is not valid!");
+  try {
+    const userInfo = jwt.verify(token, "secretkey");
+    
+    // Update the followed user's followers
+    const followedUser = await User.findById(req.body.userId);
+    if (!followedUser) return res.status(404).json("User not found!");
 
-    const q = "DELETE FROM relationships WHERE `followerUserId` = ? AND `followedUserId` = ?";
+    // Update the follower user's followings
+    const followerUser = await User.findById(userInfo.id);
+    if (!followerUser) return res.status(404).json("User not found!");
 
-    db.query(q, [userInfo.id, req.query.userId], (err, data) => {
-      if (err) return res.status(500).json(err);
-      return res.status(200).json("Unfollow");
-    });
-  });
+    // Check if already following
+    if (followedUser.followers.includes(userInfo.id)) {
+      return res.status(400).json("You are already following this user!");
+    }
+
+    // Add to followers and followings
+    followedUser.followers.push(userInfo.id);
+    followerUser.followings.push(req.body.userId);
+
+    await followedUser.save();
+    await followerUser.save();
+
+    return res.status(200).json("Following");
+  } catch (err) {
+    return res.status(500).json(err);
+  }
+};
+
+export const deleteRelationship = async (req, res) => {
+  const token = req.cookies.accessToken;
+  if (!token) return res.status(401).json("Not logged in!");
+
+  try {
+    const userInfo = jwt.verify(token, "secretkey");
+    
+    // Update the followed user's followers
+    const followedUser = await User.findById(req.query.userId);
+    if (!followedUser) return res.status(404).json("User not found!");
+
+    // Update the follower user's followings
+    const followerUser = await User.findById(userInfo.id);
+    if (!followerUser) return res.status(404).json("User not found!");
+
+    // Check if not following
+    if (!followedUser.followers.includes(userInfo.id)) {
+      return res.status(400).json("You are not following this user!");
+    }
+
+    // Remove from followers and followings
+    followedUser.followers = followedUser.followers.filter(id => id.toString() !== userInfo.id);
+    followerUser.followings = followerUser.followings.filter(id => id.toString() !== req.query.userId);
+
+    await followedUser.save();
+    await followerUser.save();
+
+    return res.status(200).json("Unfollow");
+  } catch (err) {
+    return res.status(500).json(err);
+  }
 };

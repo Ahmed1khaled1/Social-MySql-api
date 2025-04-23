@@ -1,70 +1,79 @@
-import { db } from "../connect.js";
+import Post from "../models/Post.js";
+import User from "../models/User.js";
 import jwt from "jsonwebtoken";
 import moment from "moment";
 
-export const getPosts = (req, res) => {
+export const getPosts = async (req, res) => {
   const userId = req.query.userId;
   const token = req.cookies.accessToken;
   if (!token) return res.status(401).json("Not logged in!");
 
-  jwt.verify(token, "secretkey", (err, userInfo) => {
-    if (err) return res.status(403).json("Token is not valid!");
+  try {
+    const userInfo = jwt.verify(token, "secretkey");
 
-    console.log(userId);
+    let posts;
+    if (userId !== "undefined") {
+      // Get posts for a specific user
+      posts = await Post.find({ userId })
+        .sort({ createdAt: -1 })
+        .populate('userId', 'name profilePicture');
+    } else {
+      // Get posts from followed users and user's own posts
+      const user = await User.findById(userInfo.id);
+      const followingIds = user.followings;
+      posts = await Post.find({
+        $or: [
+          { userId: { $in: followingIds } },
+          { userId: userInfo.id }
+        ]
+      })
+      .sort({ createdAt: -1 })
+      .populate('userId', 'name profilePicture');
+    }
 
-    const q =
-      userId !== "undefined"
-        ? `SELECT p.*, u.id AS userId, name, profilePic FROM posts AS p JOIN users AS u ON (u.id = p.userId) WHERE p.userId = ? ORDER BY p.createdAt DESC`
-        : `SELECT p.*, u.id AS userId, name, profilePic FROM posts AS p JOIN users AS u ON (u.id = p.userId)
-    LEFT JOIN relationships AS r ON (p.userId = r.followedUserId) WHERE r.followerUserId= ? OR p.userId =?
-    ORDER BY p.createdAt DESC`;
-
-    const values =
-      userId !== "undefined" ? [userId] : [userInfo.id, userInfo.id];
-
-    db.query(q, values, (err, data) => {
-      if (err) return res.status(500).json(err);
-      return res.status(200).json(data);
-    });
-  });
+    return res.status(200).json(posts);
+  } catch (err) {
+    return res.status(500).json(err);
+  }
 };
 
-export const addPost = (req, res) => {
+export const addPost = async (req, res) => {
   const token = req.cookies.accessToken;
   if (!token) return res.status(401).json("Not logged in!");
 
-  jwt.verify(token, "secretkey", (err, userInfo) => {
-    if (err) return res.status(403).json("Token is not valid!");
+  try {
+    const userInfo = jwt.verify(token, "secretkey");
 
-    const q =
-      "INSERT INTO posts(`desc`, `img`, `createdAt`, `userId`) VALUES (?)";
-    const values = [
-      req.body.desc,
-      req.body.img,
-      moment(Date.now()).format("YYYY-MM-DD HH:mm:ss"),
-      userInfo.id,
-    ];
-    db.query(q, [values], (err, data) => {
-      if (err) return res.status(500).json(err);
-      return res.status(200).json("Post has been created.");
+    const newPost = new Post({
+      desc: req.body.desc,
+      img: req.body.img,
+      userId: userInfo.id,
     });
-  });
+
+    const savedPost = await newPost.save();
+    return res.status(200).json("Post has been created.");
+  } catch (err) {
+    return res.status(500).json(err);
+  }
 };
 
-export const deletePost = (req, res) => {
+export const deletePost = async (req, res) => {
   const token = req.cookies.accessToken;
   if (!token) return res.status(401).json("Not logged in!");
 
-  jwt.verify(token, "secretkey", (err, userInfo) => {
-    if (err) return res.status(403).json("Token is not valid!");
+  try {
+    const userInfo = jwt.verify(token, "secretkey");
 
-    const q =
-      "DELETE FROM posts WHERE `id`=? AND `userId` = ?";
+    const post = await Post.findById(req.params.id);
+    if (!post) return res.status(404).json("Post not found!");
 
-    db.query(q, [req.params.id, userInfo.id], (err, data) => {
-      if (err) return res.status(500).json(err);
-      if(data.affectedRows>0) return res.status(200).json("Post has been deleted.");
-      return res.status(403).json("You can delete only your post")
-    });
-  });
+    if (post.userId.toString() !== userInfo.id) {
+      return res.status(403).json("You can delete only your post");
+    }
+
+    await Post.findByIdAndDelete(req.params.id);
+    return res.status(200).json("Post has been deleted.");
+  } catch (err) {
+    return res.status(500).json(err);
+  }
 };

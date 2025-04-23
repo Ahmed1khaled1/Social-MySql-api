@@ -1,54 +1,72 @@
-import { db } from "../connect.js";
+import Post from "../models/Post.js";
 import jwt from "jsonwebtoken";
-import moment from "moment";
 
-export const getComments = (req, res) => {
-  const q = `SELECT c.*, u.id AS userId, name, profilePic FROM comments AS c JOIN users AS u ON (u.id = c.userId)
-    WHERE c.postId = ? ORDER BY c.createdAt DESC
-    `;
-
-  db.query(q, [req.query.postId], (err, data) => {
-    if (err) return res.status(500).json(err);
-    return res.status(200).json(data);
-  });
+export const getComments = async (req, res) => {
+  try {
+    const post = await Post.findById(req.query.postId)
+      .populate('comments.userId', 'name profilePicture')
+      .select('comments');
+    
+    if (!post) return res.status(404).json("Post not found!");
+    
+    return res.status(200).json(post.comments);
+  } catch (err) {
+    return res.status(500).json(err);
+  }
 };
 
-export const addComment = (req, res) => {
+export const addComment = async (req, res) => {
   const token = req.cookies.accessToken;
   if (!token) return res.status(401).json("Not logged in!");
 
-  jwt.verify(token, "secretkey", (err, userInfo) => {
-    if (err) return res.status(403).json("Token is not valid!");
+  try {
+    const userInfo = jwt.verify(token, "secretkey");
+    
+    const post = await Post.findById(req.body.postId);
+    if (!post) return res.status(404).json("Post not found!");
 
-    const q = "INSERT INTO comments(`desc`, `createdAt`, `userId`, `postId`) VALUES (?)";
-    const values = [
-      req.body.desc,
-      moment(Date.now()).format("YYYY-MM-DD HH:mm:ss"),
-      userInfo.id,
-      req.body.postId
-    ];
+    const newComment = {
+      userId: userInfo.id,
+      text: req.body.desc,
+      createdAt: new Date()
+    };
 
-    db.query(q, [values], (err, data) => {
-      if (err) return res.status(500).json(err);
-      return res.status(200).json("Comment has been created.");
-    });
-  });
+    post.comments.push(newComment);
+    await post.save();
+
+    // Populate the user info in the response
+    const updatedPost = await Post.findById(req.body.postId)
+      .populate('comments.userId', 'name profilePicture')
+      .select('comments');
+    
+    return res.status(200).json(updatedPost.comments[updatedPost.comments.length - 1]);
+  } catch (err) {
+    return res.status(500).json(err);
+  }
 };
 
-export const deleteComment = (req, res) => {
-  const token = req.cookies.access_token;
+export const deleteComment = async (req, res) => {
+  const token = req.cookies.accessToken;
   if (!token) return res.status(401).json("Not authenticated!");
 
-  jwt.verify(token, "jwtkey", (err, userInfo) => {
-    if (err) return res.status(403).json("Token is not valid!");
+  try {
+    const userInfo = jwt.verify(token, "secretkey");
+    
+    const post = await Post.findOne({ "comments._id": req.params.id });
+    if (!post) return res.status(404).json("Comment not found!");
 
-    const commentId = req.params.id;
-    const q = "DELETE FROM comments WHERE `id` = ? AND `userId` = ?";
+    const comment = post.comments.id(req.params.id);
+    if (!comment) return res.status(404).json("Comment not found!");
 
-    db.query(q, [commentId, userInfo.id], (err, data) => {
-      if (err) return res.status(500).json(err);
-      if (data.affectedRows > 0) return res.json("Comment has been deleted!");
+    if (comment.userId.toString() !== userInfo.id) {
       return res.status(403).json("You can delete only your comment!");
-    });
-  });
+    }
+
+    comment.remove();
+    await post.save();
+
+    return res.status(200).json("Comment has been deleted!");
+  } catch (err) {
+    return res.status(500).json(err);
+  }
 };

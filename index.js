@@ -13,8 +13,11 @@ const { v2: cloudinary } = pkg;
 import { CloudinaryStorage } from "multer-storage-cloudinary";
 import cookieParser from "cookie-parser";
 import dotenv from "dotenv";
+import connectDB from "./connect.js";
 dotenv.config();
 
+// Connect to MongoDB
+connectDB();
 
 //middlewares
 app.use((req, res, next) => {
