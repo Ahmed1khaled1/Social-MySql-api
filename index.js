@@ -31,11 +31,8 @@ app.use(
     methods: "GET,POST,PUT,DELETE,OPTIONS,PATCH",
     allowedHeaders:
       "Origin, X-Requested-With, Content-Type, Accept, Authorization",
-<<<<<<< HEAD
+
     credentials: true, // This line is crucial to allow cookies to be sent
-=======
-    credentials: true,
->>>>>>> 569b2167034a70a9b6834e55cb48e37a0c7cc1b0
   })
 );
 
@@ -70,6 +67,7 @@ app.use("/api/comments", commentRoutes);
 app.use("/api/likes", likeRoutes);
 app.use("/api/relationships", relationshipRoutes);
 
-app.listen(8800, () => {
-  console.log("API working!");
+const PORT = process.env.PORT || 8800;
+app.listen(PORT, () => {
+  console.log(`API working on port ${PORT}!`);
 });
