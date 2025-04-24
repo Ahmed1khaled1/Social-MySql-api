@@ -21,22 +21,30 @@ connectDB();
 
 const app = express();
 
-const allowedOrigins = [
-  "https://social-my-sql-client.vercel.app",
-  "http://localhost:3000",
-];
+app.use((req, res, next) => {
+  console.log("Origin:", req.headers.origin);
+  console.log("Method:", req.method);
+  next();
+});
+
 
 app.use(
   cors({
     origin: (origin, callback) => {
+      const allowedOrigins = [
+        "http://localhost:3000",
+        "https://social-my-sql-client.vercel.app",
+      ];
       if (!origin || allowedOrigins.includes(origin)) {
-        return callback(null, true);
+        callback(null, true);
+      } else {
+        callback(new Error("Not allowed by CORS"));
       }
-      callback(new Error("Not allowed by CORS"));
     },
     credentials: true,
   })
 );
+
 app.options("*", cors()); // Preflight
 
 app.use(cookieParser());
