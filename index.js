@@ -19,25 +19,19 @@ dotenv.config();
 // Connect to MongoDB
 connectDB();
 
-//middlewares
-app.use((req, res, next) => {
-  res.header("Access-Control-Allow-Credentials", true);
-  next();
-});
+// Basic middleware
 app.use(express.json());
-app.use(
-  cors({
-    origin: "https://social-my-sql-client.vercel.app",
-    methods: "GET,POST,PUT,DELETE,OPTIONS,PATCH",
-    allowedHeaders:
-      "Origin, X-Requested-With, Content-Type, Accept, Authorization",
-
-    credentials: true, // This line is crucial to allow cookies to be sent
-  })
-);
-
 app.use(cookieParser());
 
+// CORS configuration
+app.use(cors({
+  origin: true, // Allow all origins
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept']
+}));
+
+// Cloudinary configuration
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
   api_key: process.env.CLOUDINARY_API_KEY,
