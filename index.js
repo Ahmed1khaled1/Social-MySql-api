@@ -85,7 +85,11 @@ app.get("/api", (req, res) => {
   res.send("API is running 🚀");
 });
 
-// Add explicit OPTIONS handler for all routes
-app.options('*', cors());
+// Add a catch-all route for 404s
+app.use((req, res) => {
+  res.status(404).json({ error: "Not Found" });
+});
 
-export default serverless(app);
+// Export the serverless app
+const handler = serverless(app);
+export { handler as default };
