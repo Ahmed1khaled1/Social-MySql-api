@@ -102,6 +102,9 @@ app.use("/api/comments", commentRoutes);
 app.use("/api/likes", likeRoutes);
 app.use("/api/relationships", relationshipRoutes);
 
+app.get("/", (req, res) => {
+  res.send("API is running 🚀");
+});
 // Start server
 const PORT = process.env.PORT || 8800;
 app.listen(PORT, () => {
