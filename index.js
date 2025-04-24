@@ -1,11 +1,13 @@
 import express from "express";
 const app = express();
+
 import authRoutes from "./routes/auth.js";
 import userRoutes from "./routes/users.js";
 import postRoutes from "./routes/posts.js";
 import commentRoutes from "./routes/comments.js";
 import likeRoutes from "./routes/likes.js";
 import relationshipRoutes from "./routes/relationships.js";
+
 import cors from "cors";
 import multer from "multer";
 import pkg from "cloudinary";
@@ -14,24 +16,62 @@ import { CloudinaryStorage } from "multer-storage-cloudinary";
 import cookieParser from "cookie-parser";
 import dotenv from "dotenv";
 import connectDB from "./connect.js";
+
 dotenv.config();
 
 // Connect to MongoDB
 connectDB();
 
-// Basic middleware
+// Middleware
 app.use(express.json());
 app.use(cookieParser());
 
-// CORS configuration
-app.use(cors({
-  origin: true, // Allow all origins
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept']
-}));
+// Manual CORS headers for debugging
+app.use((req, res, next) => {
+  const allowedOrigins = [
+    "https://social-my-sql-client.vercel.app",
+    "http://localhost:3000",
+  ];
+  const origin = req.headers.origin;
+  if (allowedOrigins.includes(origin)) {
+    res.setHeader("Access-Control-Allow-Origin", origin);
+  }
 
-// Cloudinary configuration
+  res.header("Access-Control-Allow-Credentials", "true");
+  res.header(
+    "Access-Control-Allow-Methods",
+    "GET,POST,PUT,DELETE,OPTIONS,PATCH"
+  );
+  res.header(
+    "Access-Control-Allow-Headers",
+    "Content-Type,Authorization,X-Requested-With,Accept"
+  );
+
+  if (req.method === "OPTIONS") {
+    return res.sendStatus(200);
+  }
+  next();
+});
+
+// CORS middleware
+app.use(
+  cors({
+    origin: [
+      "https://social-my-sql-client.vercel.app",
+      "http://localhost:3000",
+    ],
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
+    allowedHeaders: [
+      "Content-Type",
+      "Authorization",
+      "X-Requested-With",
+      "Accept",
+    ],
+  })
+);
+
+// Cloudinary config
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
   api_key: process.env.CLOUDINARY_API_KEY,
@@ -54,6 +94,7 @@ app.post("/api/upload", upload.single("file"), (req, res) => {
     .json({ message: "Upload successful!", fileUrl: req.file.path });
 });
 
+// Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/posts", postRoutes);
@@ -61,6 +102,7 @@ app.use("/api/comments", commentRoutes);
 app.use("/api/likes", likeRoutes);
 app.use("/api/relationships", relationshipRoutes);
 
+// Start server
 const PORT = process.env.PORT || 8800;
 app.listen(PORT, () => {
   console.log(`API working on port ${PORT}!`);
