@@ -27,13 +27,12 @@ app.use((req, res, next) => {
   next();
 });
 
-
 app.use(
   cors({
     origin: (origin, callback) => {
       const allowedOrigins = [
         "http://localhost:3000",
-        "https://social-my-sql-client.vercel.app",
+        "https://social-my-sql-client.vercel.app"
       ];
       if (!origin || allowedOrigins.includes(origin)) {
         callback(null, true);
@@ -42,10 +41,13 @@ app.use(
       }
     },
     credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin', 'Access-Control-Allow-Origin', 'Access-Control-Allow-Credentials'],
+    exposedHeaders: ['Set-Cookie'],
+    preflightContinue: false,
+    optionsSuccessStatus: 204
   })
 );
-
-app.options("*", cors()); // Preflight
 
 app.use(cookieParser());
 app.use(express.json());
@@ -82,5 +84,8 @@ app.use("/api/relationships", relationshipRoutes);
 app.get("/api", (req, res) => {
   res.send("API is running 🚀");
 });
+
+// Add explicit OPTIONS handler for all routes
+app.options('*', cors());
 
 export default serverless(app);
